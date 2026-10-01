@@ -1,0 +1,32 @@
+{
+  "name": "iran-map-studio",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --configLoader native",
+    "build": "tsc -b && vite build --configLoader native",
+    "preview": "vite preview --host 127.0.0.1"
+  },
+  "dependencies": {
+    "@fontsource-variable/vazirmatn": "latest",
+    "@vitejs/plugin-react": "latest",
+    "canvg": "latest",
+    "d3-geo": "latest",
+    "lucide-react": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "react-iran-maps": "latest",
+    "topojson-client": "latest",
+    "vite": "latest",
+    "xlsx": "latest"
+  },
+  "devDependencies": {
+    "@types/d3-geo": "latest",
+    "@types/geojson": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "@types/topojson-client": "latest",
+    "typescript": "latest"
+  }
+}

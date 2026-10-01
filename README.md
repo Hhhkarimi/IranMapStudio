@@ -1,0 +1,60 @@
+# نقشه‌ساز ایران / Iran Map Studio
+
+وب‌اپ رایگان و کاملاً مرورگرمحور برای ساخت نقشه‌های عددی ایران در سطح استان و شهرستان.
+
+## قابلیت‌ها
+
+- نمایش ۳۱ استان و ۴۹۳ مرز شهرستانی موجود در دادهٔ منبع
+- ورود داده به‌صورت دستی، Excel، CSV یا JSON
+- رابط فارسی و انگلیسی با پشتیبانی RTL/LTR
+- پنج پالت رنگی و نمایش/پنهان‌کردن برچسب مناطق
+- فونت Vazirmatn داخلی و امکان بارگذاری TTF، OTF، WOFF یا WOFF2
+- خروجی PNG و JPG در کیفیت‌های 1×، 2× و 4×
+- پردازش کامل روی دستگاه کاربر؛ فایل‌های داده به هیچ سروری فرستاده نمی‌شوند
+
+## قالب داده
+
+در Excel یا CSV، ستون اول نام استان/شهرستان و ستون دوم مقدار عددی باشد. ردیف اول عنوان ستون‌هاست.
+
+```text
+نام,مقدار
+تهران,100
+اصفهان,72
+فارس,58
+```
+
+JSON می‌تواند آرایه‌ای یا شیء نام-مقدار باشد:
+
+```json
+{
+  "تهران": 100,
+  "اصفهان": 72
+}
+```
+
+## اجرا
+
+```bash
+npm install
+npm run dev
+```
+
+ساخت نسخهٔ نهایی:
+
+```bash
+npm run build
+```
+
+فایل‌های قابل انتشار در پوشهٔ `dist` قرار می‌گیرند و می‌توان آن را رایگان روی GitHub Pages، Cloudflare Pages یا هر میزبان استاتیک دیگری منتشر کرد.
+
+## انتشار روی Vercel
+
+ریپو را در Vercel ایمپورت کنید. Vercel به‌طور خودکار Vite را تشخیص می‌دهد؛ دستور ساخت `npm run build` و پوشهٔ خروجی `dist` است و متغیر محیطی لازم نیست.
+
+## منبع داده و مجوز
+
+دادهٔ مرزی از پروژهٔ [react-iran-maps](https://github.com/rezasohrabi/react-iran-maps) گرفته شده است؛ تقسیمات اداری ۱۴۰۰/۲۰۲۱، با مجوز MIT. کد این پروژه نیز برای استفاده و توسعه آزاد است.
+
+---
+
+Free, client-side bilingual choropleth-map editor for Iran. Import Excel/CSV/JSON or enter values manually, drill down from provinces to counties, customize colours and fonts, and export PNG/JPG images at multiple resolutions.
