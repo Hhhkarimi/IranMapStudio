@@ -10,6 +10,7 @@ import {
   FileSpreadsheet,
   ImageDown,
   MapPinned,
+  Palette as PaletteIcon,
   PencilLine,
   RotateCcw,
   Type,
@@ -55,7 +56,29 @@ const PALETTES: Palette[] = [
   { id: "saffron", fa: "زعفران", en: "Saffron", colors: ["#fff2d8", "#f8d594", "#eeb452", "#cc8627", "#94570f"] },
   { id: "plum", fa: "آلو", en: "Plum", colors: ["#f4e9f3", "#dbbfd9", "#bd8ab9", "#925d90", "#663665"] },
   { id: "mono", fa: "خاکستری", en: "Graphite", colors: ["#e9edf2", "#c7ced8", "#9ca8b6", "#6f7d8d", "#414e5d"] },
+  { id: "turquoise", fa: "فیروزه", en: "Turquoise", colors: ["#e2f7f5", "#afe5df", "#6dc9c0", "#2aa89c", "#08756c"] },
+  { id: "rose", fa: "رز", en: "Rose", colors: ["#fdebed", "#f7bec7", "#ea8698", "#d64f6a", "#a92545"] },
+  { id: "indigo", fa: "نیلی", en: "Indigo", colors: ["#ecebff", "#ccc8ff", "#9f98f3", "#7168d8", "#4840a8"] },
+  { id: "copper", fa: "مس", en: "Copper", colors: ["#faeee6", "#eac8b2", "#d49a78", "#b76a43", "#7f4024"] },
+  { id: "olive", fa: "زیتون", en: "Olive", colors: ["#f0f2df", "#d4d9a9", "#afb970", "#84943f", "#5b681f"] },
+  { id: "ocean", fa: "اقیانوس", en: "Ocean", colors: ["#e2f1fb", "#add7ef", "#6bb5dd", "#318bc0", "#145f91"] },
+  { id: "ember", fa: "اخگر", en: "Ember", colors: ["#fff0e6", "#ffc8a5", "#f7955e", "#dc5f2d", "#9b3217"] },
+  { id: "forest", fa: "جنگل", en: "Forest", colors: ["#e9f2e7", "#c1d9bc", "#8eb987", "#5b9157", "#356635"] },
+  { id: "lagoon", fa: "مرداب", en: "Lagoon", colors: ["#e2f3f1", "#addbd4", "#70bcb1", "#39988d", "#176c65"] },
+  { id: "sunset", fa: "غروب", en: "Sunset", colors: ["#fff0dd", "#facba2", "#ee9c72", "#d26459", "#963b53"] },
+  { id: "berry", fa: "تمشک", en: "Berry", colors: ["#f7e8f1", "#e4bad2", "#ca82ad", "#a84d83", "#762b5e"] },
 ];
+
+const GITHUB_URL = "https://github.com/Hhhkarimi/IranMapStudio";
+const LINKEDIN_URL = "https://www.linkedin.com/in/hossein-karimi-8a452153/";
+
+function GithubMark({ size = 18 }: { size?: number }) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M12 .7a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2.23c-3.22.7-3.9-1.37-3.9-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.16.08 1.78 1.2 1.78 1.2 1.04 1.77 2.72 1.26 3.38.96.1-.75.4-1.26.74-1.55-2.57-.29-5.28-1.29-5.28-5.68 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.16 1.18a10.98 10.98 0 0 1 5.76 0c2.2-1.49 3.16-1.18 3.16-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.4-2.71 5.38-5.29 5.67.42.36.79 1.07.79 2.16v3.2c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .7Z" /></svg>;
+}
+
+function LinkedinMark({ size = 18 }: { size?: number }) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M20.45 20.45h-3.56v-5.57c0-1.33-.03-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.34V8.98h3.42v1.57h.05c.47-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.29ZM5.32 7.41a2.06 2.06 0 1 1 0-4.12 2.06 2.06 0 0 1 0 4.12ZM7.1 20.45H3.54V8.98H7.1v11.47Z" /></svg>;
+}
 
 const copy = {
   fa: {
@@ -75,16 +98,21 @@ const copy = {
     region: "منطقه",
     style: "ظاهر نقشه",
     palette: "ترکیب رنگ",
+    customPalette: "پالت سفارشی",
     labels: "نام مناطق",
     show: "نمایش",
     hide: "پنهان",
     title: "عنوان",
     subtitle: "زیرعنوان",
+    titleSize: "اندازه عنوان",
+    subtitleSize: "اندازه زیرعنوان",
+    provinceSize: "اندازه نام استان‌ها",
+    countySize: "اندازه نام شهرستان‌ها",
     font: "فونت نقشه",
     fontHint: "TTF، OTF، WOFF یا WOFF2",
     export: "دریافت تصویر",
     quality: "کیفیت",
-    png: "دریافت PNG",
+    png: "PNG شفاف",
     jpg: "دریافت JPG",
     reset: "بازنشانی نمونه",
     back: "بازگشت به ایران",
@@ -95,6 +123,9 @@ const copy = {
     source: "دادهٔ مرزی: react-iran-maps · تقسیمات اداری ۱۴۰۰/۲۰۲۱ · MIT",
     invalid: "فایل خوانده نشد. قالب ستون‌ها یا JSON را بررسی کنید.",
     loaded: "داده‌ها روی نقشه اعمال شد.",
+    madeBy: "تهیه‌شده توسط حسین کریمی",
+    github: "گیت‌هاب",
+    linkedin: "لینکدین",
   },
   en: {
     brand: "Iran Map Studio",
@@ -113,16 +144,21 @@ const copy = {
     region: "Region",
     style: "Map style",
     palette: "Colour palette",
+    customPalette: "Custom palette",
     labels: "Region labels",
     show: "Show",
     hide: "Hide",
     title: "Title",
     subtitle: "Subtitle",
+    titleSize: "Title size",
+    subtitleSize: "Subtitle size",
+    provinceSize: "Province label size",
+    countySize: "County label size",
     font: "Map font",
     fontHint: "TTF, OTF, WOFF or WOFF2",
     export: "Export image",
     quality: "Quality",
-    png: "Download PNG",
+    png: "Transparent PNG",
     jpg: "Download JPG",
     reset: "Reset sample",
     back: "Back to Iran",
@@ -133,6 +169,9 @@ const copy = {
     source: "Boundary data: react-iran-maps · 1400/2021 administrative divisions · MIT",
     invalid: "The file could not be read. Check its columns or JSON structure.",
     loaded: "Data applied to the map.",
+    madeBy: "Made by Hossein Karimi",
+    github: "GitHub",
+    linkedin: "LinkedIn",
   },
 };
 
@@ -156,9 +195,14 @@ function App() {
     ),
   );
   const [paletteId, setPaletteId] = useState("cobalt");
+  const [customColors, setCustomColors] = useState(["#eef2ff", "#c7d2fe", "#818cf8", "#4f46e5", "#312e81"]);
   const [showLabels, setShowLabels] = useState(true);
   const [title, setTitle] = useState(copy.fa.mapTitle);
   const [subtitle, setSubtitle] = useState(copy.fa.mapSubtitle);
+  const [titleFontSize, setTitleFontSize] = useState(30);
+  const [subtitleFontSize, setSubtitleFontSize] = useState(16);
+  const [provinceFontSize, setProvinceFontSize] = useState(12);
+  const [countyFontSize, setCountyFontSize] = useState(10);
   const [quality, setQuality] = useState(2);
   const [fontName, setFontName] = useState("Vazirmatn Variable");
   const [fontDataUrl, setFontDataUrl] = useState<string | null>(null);
@@ -184,7 +228,9 @@ function App() {
   regionsRef.current = visibleRegions;
   levelRef.current = level;
 
-  const palette = PALETTES.find((item) => item.id === paletteId) ?? PALETTES[0];
+  const palette = paletteId === "custom"
+    ? { id: "custom", fa: copy.fa.customPalette, en: copy.en.customPalette, colors: customColors }
+    : PALETTES.find((item) => item.id === paletteId) ?? PALETTES[0];
   const visibleValues = visibleRegions.map((feature) => values[feature.properties.id]).filter(Number.isFinite);
   const hasData = visibleValues.length > 0;
   const minValue = hasData ? Math.min(...visibleValues) : 0;
@@ -310,13 +356,14 @@ function App() {
     const clone = svgRef.current.cloneNode(true) as SVGSVGElement;
     clone.setAttribute("width", String(WIDTH * quality));
     clone.setAttribute("height", String(HEIGHT * quality));
+    if (format === "png") clone.querySelector(".export-background")?.remove();
     const safeFontName = fontName.replace(/["']/g, "");
     const style = document.createElementNS("http://www.w3.org/2000/svg", "style");
     style.textContent = `${fontDataUrl ? `@font-face{font-family:"${safeFontName}";src:url(${fontDataUrl})}` : ""}
       text{font-family:"${safeFontName}",sans-serif}
-      .svg-title{font-size:30px;font-weight:800}.svg-subtitle{font-size:16px}
-      .region-label{font-size:12px;font-weight:750;paint-order:stroke;stroke:#f7f8fb;stroke-width:3px;stroke-linejoin:round}
-      .county-label{font-size:10px}.legend-label{font-size:12px;font-variant-numeric:tabular-nums}
+      .svg-title{font-size:${titleFontSize}px;font-weight:800}.svg-subtitle{font-size:${subtitleFontSize}px}
+      .region-label{font-size:${provinceFontSize}px;font-weight:750;paint-order:stroke;stroke:#f7f8fb;stroke-width:3px;stroke-linejoin:round}
+      .county-label{font-size:${countyFontSize}px}.legend-label{font-size:12px;font-variant-numeric:tabular-nums}
       .source-label{font-size:10px}.empty-title{font-size:18px;font-weight:750}.empty-hint{font-size:13px}`;
     clone.prepend(style);
     const canvas = document.createElement("canvas");
@@ -397,6 +444,8 @@ function App() {
   const legendValues = palette.colors.map((_, index) =>
     minValue + ((maxValue - minValue) * index) / Math.max(1, palette.colors.length - 1),
   );
+  const titleY = Math.max(54, titleFontSize + 10);
+  const subtitleY = titleY + subtitleFontSize + 10;
 
   return (
     <div className="app" dir={direction}>
@@ -455,17 +504,44 @@ function App() {
 
           <section className="panel-section">
             <div className="section-heading"><span className="section-icon"><Type size={17} aria-hidden="true" /></span><h2>{t.style}</h2></div>
-            <label className="field-label">{t.palette}
+            <div className="field-label"><span>{t.palette}</span>
               <div className="palette-list">{PALETTES.map((item) => (
                 <button key={item.id} className={`palette-option ${paletteId === item.id ? "is-active" : ""}`} onClick={() => setPaletteId(item.id)} aria-label={language === "fa" ? item.fa : item.en}>
                   <span className="swatches">{item.colors.map((color) => <i key={color} style={{ backgroundColor: color }} />)}</span>
                   <span>{language === "fa" ? item.fa : item.en}</span>
                 </button>
               ))}</div>
-            </label>
+            </div>
+            <div className="custom-palette" aria-label={t.customPalette}>
+              <button className={`palette-option ${paletteId === "custom" ? "is-active" : ""}`} onClick={() => setPaletteId("custom")}>
+                <span className="swatches">{customColors.map((color, index) => <i key={`${color}-${index}`} style={{ backgroundColor: color }} />)}</span>
+                <span><PaletteIcon size={15} aria-hidden="true" />{t.customPalette}</span>
+              </button>
+              <div className="color-inputs">{customColors.map((color, index) => (
+                <input key={index} type="color" value={color} aria-label={`${t.customPalette} ${index + 1}`} onChange={(event) => {
+                  const next = [...customColors];
+                  next[index] = event.target.value;
+                  setCustomColors(next);
+                  setPaletteId("custom");
+                }} />
+              ))}</div>
+            </div>
             <div className="toggle-row"><span>{t.labels}</span><button className="icon-text-btn" onClick={() => setShowLabels((current) => !current)}>{showLabels ? <Eye size={16} aria-hidden="true" /> : <EyeOff size={16} aria-hidden="true" />}{showLabels ? t.show : t.hide}</button></div>
             <label className="field-label">{t.title}<input value={title} onChange={(event) => setTitle(event.target.value)} /></label>
             <label className="field-label">{t.subtitle}<input value={subtitle} onChange={(event) => setSubtitle(event.target.value)} /></label>
+            <div className="type-scale-grid">
+              {[
+                { label: t.titleSize, value: titleFontSize, set: setTitleFontSize, min: 18, max: 64 },
+                { label: t.subtitleSize, value: subtitleFontSize, set: setSubtitleFontSize, min: 10, max: 36 },
+                { label: t.provinceSize, value: provinceFontSize, set: setProvinceFontSize, min: 7, max: 28 },
+                { label: t.countySize, value: countyFontSize, set: setCountyFontSize, min: 6, max: 22 },
+              ].map((item) => (
+                <label className="range-field" key={item.label}>
+                  <span>{item.label} <output>{item.value} px</output></span>
+                  <input type="range" min={item.min} max={item.max} value={item.value} onChange={(event) => item.set(Number(event.target.value))} />
+                </label>
+              ))}
+            </div>
             <label className="font-upload"><input type="file" accept=".ttf,.otf,.woff,.woff2,font/ttf,font/otf,font/woff,font/woff2" onChange={(event) => event.target.files?.[0] && void loadFont(event.target.files[0])} /><Type size={16} aria-hidden="true" /><span><strong>{t.font}</strong><small>{t.fontHint}</small></span></label>
           </section>
         </aside>
@@ -482,9 +558,9 @@ function App() {
           <figure className="map-frame">
             <svg ref={svgRef} className="map-svg" xmlns="http://www.w3.org/2000/svg" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} role="img" aria-labelledby="map-svg-title map-svg-desc" style={{ fontFamily: fontName }}>
               <title id="map-svg-title">{title}</title><desc id="map-svg-desc">{subtitle}</desc>
-              <rect width={WIDTH} height={HEIGHT} fill="#f7f8fb" />
-              <text x={WIDTH / 2} y="54" textAnchor="middle" className="svg-title" fill="#1f2937">{title}</text>
-              <text x={WIDTH / 2} y="88" textAnchor="middle" className="svg-subtitle" fill="#667085">{subtitle}</text>
+              <rect className="export-background" width={WIDTH} height={HEIGHT} fill="#f7f8fb" />
+              <text x={WIDTH / 2} y={titleY} textAnchor="middle" className="svg-title" style={{ fontSize: titleFontSize }} fill="#1f2937">{title}</text>
+              <text x={WIDTH / 2} y={subtitleY} textAnchor="middle" className="svg-subtitle" style={{ fontSize: subtitleFontSize }} fill="#667085">{subtitle}</text>
               <g className="map-regions">
                 {visibleRegions.map((feature) => {
                   const value = values[feature.properties.id];
@@ -511,7 +587,7 @@ function App() {
                         onBlur={() => setTooltip(null)}
                       />
                       {showLabels && Number.isFinite(centroid[0]) && (
-                        <text x={centroid[0]} y={centroid[1]} textAnchor="middle" dominantBaseline="central" className={level === "province" ? "region-label" : "region-label county-label"} fill="#243244" pointerEvents="none">{name}</text>
+                        <text x={centroid[0]} y={centroid[1]} textAnchor="middle" dominantBaseline="central" className={level === "province" ? "region-label" : "region-label county-label"} style={{ fontSize: level === "province" ? provinceFontSize : countyFontSize }} fill="#243244" pointerEvents="none">{name}</text>
                       )}
                     </g>
                   );
@@ -533,7 +609,13 @@ function App() {
       </main>
 
       {tooltip && <div className="map-tooltip" style={{ insetInlineStart: tooltip.x + 14, top: tooltip.y + 14 }}><strong>{tooltip.name}</strong>{Number.isFinite(tooltip.value) && <span>{new Intl.NumberFormat(language === "fa" ? "fa-IR" : "en-US").format(tooltip.value!)}</span>}</div>}
-      <footer className="foot-line"><span>{t.brand}</span><span>{language === "fa" ? "رایگان · بدون سرور · داده‌ها روی دستگاه شما" : "Free · serverless · your data stays on your device"}</span></footer>
+      <footer className="foot-line">
+        <div><strong>{t.madeBy}</strong><span>{language === "fa" ? "رایگان · بدون سرور · داده‌ها روی دستگاه شما" : "Free · serverless · your data stays on your device"}</span></div>
+        <nav className="social-links" aria-label={language === "fa" ? "شبکه‌های اجتماعی" : "Social links"}>
+          <a href={GITHUB_URL} target="_blank" rel="noreferrer"><GithubMark />{t.github}</a>
+          <a href={LINKEDIN_URL} target="_blank" rel="noreferrer"><LinkedinMark />{t.linkedin}</a>
+        </nav>
+      </footer>
     </div>
   );
 }
