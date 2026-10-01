@@ -2,14 +2,19 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { geoMercator, geoPath } from "d3-geo";
 import type { Feature, FeatureCollection, Geometry } from "geojson";
 import {
+  AlertCircle,
   ArrowRight,
   Braces,
+  Check,
+  ChevronLeft,
+  ChevronRight,
   Download,
   Eye,
   EyeOff,
   FileSpreadsheet,
   ImageDown,
   MapPinned,
+  MousePointer2,
   Palette as PaletteIcon,
   PencilLine,
   RotateCcw,
@@ -21,6 +26,9 @@ import iranGeoRaw from "./data/iran-geo.json";
 type Language = "fa" | "en";
 type ViewLevel = "province" | "county";
 type DataMode = "manual" | "file";
+type WorkflowStep = "data" | "style" | "export";
+type ScaleMode = "linear" | "quantile" | "log";
+type LegendPosition = "top" | "bottom";
 
 interface RegionProperties {
   id: string;
@@ -44,6 +52,19 @@ interface Palette {
   fa: string;
   en: string;
   colors: string[];
+}
+
+interface ImportIssue {
+  name: string;
+  value: number;
+  suggestionId?: string;
+  suggestionName?: string;
+}
+
+interface ImportSummary {
+  matched: number;
+  total: number;
+  issues: ImportIssue[];
 }
 
 const geoData = iranGeoRaw as IranGeoData;
@@ -126,6 +147,29 @@ const copy = {
     madeBy: "تهیه‌شده توسط حسین کریمی",
     github: "گیت‌هاب",
     linkedin: "لینکدین",
+    stepData: "داده",
+    stepStyle: "طراحی",
+    stepExport: "خروجی",
+    next: "مرحله بعد",
+    matchingReport: "گزارش تطبیق",
+    needsReview: "نیازمند بررسی",
+    useSuggestion: "تأیید پیشنهاد",
+    complete: "تکمیل داده‌ها",
+    editOnMap: "برای ویرایش مقدار، روی یک ناحیه کلیک کنید.",
+    editValue: "ویرایش مستقیم مقدار",
+    openCounties: "نمایش شهرستان‌ها",
+    scaleMethod: "روش بازه‌بندی",
+    linear: "خطی",
+    quantile: "صدکی",
+    logarithmic: "لگاریتمی",
+    classes: "تعداد طبقات",
+    noDataColor: "رنگ دادهٔ خالی",
+    legendPosition: "محل راهنما",
+    top: "بالا",
+    bottom: "پایین",
+    showLegend: "نمایش راهنمای رنگ",
+    exportReady: "نقشه برای خروجی آماده است",
+    exportCheck: "عنوان، داده و ابعاد خروجی را یک‌بار بررسی کنید.",
   },
   en: {
     brand: "Iran Map Studio",
@@ -172,6 +216,29 @@ const copy = {
     madeBy: "Made by Hossein Karimi",
     github: "GitHub",
     linkedin: "LinkedIn",
+    stepData: "Data",
+    stepStyle: "Design",
+    stepExport: "Export",
+    next: "Next step",
+    matchingReport: "Matching report",
+    needsReview: "Needs review",
+    useSuggestion: "Accept suggestion",
+    complete: "Data complete",
+    editOnMap: "Click a region to edit its value directly.",
+    editValue: "Edit value directly",
+    openCounties: "View counties",
+    scaleMethod: "Classification",
+    linear: "Linear",
+    quantile: "Quantile",
+    logarithmic: "Logarithmic",
+    classes: "Number of classes",
+    noDataColor: "No-data colour",
+    legendPosition: "Legend position",
+    top: "Top",
+    bottom: "Bottom",
+    showLegend: "Show colour legend",
+    exportReady: "Map is ready to export",
+    exportCheck: "Review the title, data, and output dimensions once.",
   },
 };
 
@@ -181,7 +248,48 @@ function normalizeName(value: string): string {
     .toLocaleLowerCase()
     .replace(/[يى]/g, "ی")
     .replace(/ك/g, "ک")
-    .replace(/[\u200c\s_-]+/g, "");
+    .replace(/[\u200c\s_-]+/g, "")
+    .replace(/^(استان|شهرستان|ostan|province|county|shahrestan)/, "")
+    .replace(/(province|county)$/g, "");
+}
+
+function editDistance(left: string, right: string): number {
+  const row = Array.from({ length: right.length + 1 }, (_, index) => index);
+  for (let leftIndex = 1; leftIndex <= left.length; leftIndex += 1) {
+    let previous = row[0];
+    row[0] = leftIndex;
+    for (let rightIndex = 1; rightIndex <= right.length; rightIndex += 1) {
+      const current = row[rightIndex];
+      row[rightIndex] = Math.min(
+        row[rightIndex] + 1,
+        row[rightIndex - 1] + 1,
+        previous + (left[leftIndex - 1] === right[rightIndex - 1] ? 0 : 1),
+      );
+      previous = current;
+    }
+  }
+  return row[right.length];
+}
+
+function similarity(left: string, right: string): number {
+  const longest = Math.max(left.length, right.length);
+  return longest === 0 ? 1 : 1 - editDistance(left, right) / longest;
+}
+
+function interpolateHex(start: string, end: string, ratio: number): string {
+  const from = [1, 3, 5].map((offset) => Number.parseInt(start.slice(offset, offset + 2), 16));
+  const to = [1, 3, 5].map((offset) => Number.parseInt(end.slice(offset, offset + 2), 16));
+  return `#${from.map((value, index) => Math.round(value + (to[index] - value) * ratio).toString(16).padStart(2, "0")).join("")}`;
+}
+
+function samplePalette(colors: string[], count: number): string[] {
+  if (count === colors.length) return colors;
+  return Array.from({ length: count }, (_, index) => {
+    const position = (index / Math.max(1, count - 1)) * (colors.length - 1);
+    const lower = Math.floor(position);
+    const upper = Math.min(colors.length - 1, Math.ceil(position));
+    return interpolateHex(colors[lower], colors[upper], position - lower);
+  });
 }
 
 function App() {
@@ -189,6 +297,7 @@ function App() {
   const [level, setLevel] = useState<ViewLevel>("province");
   const [selectedProvince, setSelectedProvince] = useState("تهران");
   const [dataMode, setDataMode] = useState<DataMode>("manual");
+  const [activeStep, setActiveStep] = useState<WorkflowStep>("data");
   const [values, setValues] = useState<Record<string, number>>(() =>
     Object.fromEntries(
       geoData.provinces.features.map((feature) => [feature.properties.id, feature.properties.countyCount ?? 0]),
@@ -197,6 +306,11 @@ function App() {
   const [paletteId, setPaletteId] = useState("cobalt");
   const [customColors, setCustomColors] = useState(["#eef2ff", "#c7d2fe", "#818cf8", "#4f46e5", "#312e81"]);
   const [showLabels, setShowLabels] = useState(true);
+  const [showLegend, setShowLegend] = useState(true);
+  const [scaleMode, setScaleMode] = useState<ScaleMode>("linear");
+  const [classCount, setClassCount] = useState(5);
+  const [noDataColor, setNoDataColor] = useState("#edf0f5");
+  const [legendPosition, setLegendPosition] = useState<LegendPosition>("bottom");
   const [title, setTitle] = useState(copy.fa.mapTitle);
   const [subtitle, setSubtitle] = useState(copy.fa.mapSubtitle);
   const [titleFontSize, setTitleFontSize] = useState(30);
@@ -207,6 +321,8 @@ function App() {
   const [fontName, setFontName] = useState("Vazirmatn Variable");
   const [fontDataUrl, setFontDataUrl] = useState<string | null>(null);
   const [status, setStatus] = useState("");
+  const [importSummary, setImportSummary] = useState<ImportSummary | null>(null);
+  const [selectedRegionId, setSelectedRegionId] = useState<string | null>(null);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; name: string; value?: number } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const regionsRef = useRef<RegionFeature[]>([]);
@@ -235,13 +351,36 @@ function App() {
   const hasData = visibleValues.length > 0;
   const minValue = hasData ? Math.min(...visibleValues) : 0;
   const maxValue = hasData ? Math.max(...visibleValues) : 1;
+  const scaleColors = useMemo(() => samplePalette(palette.colors, classCount), [classCount, palette.colors]);
+  const scaleBreaks = useMemo(() => {
+    if (!hasData || maxValue === minValue) return Array.from({ length: classCount + 1 }, () => minValue);
+    if (scaleMode === "quantile") {
+      const sorted = [...visibleValues].sort((a, b) => a - b);
+      return Array.from({ length: classCount + 1 }, (_, index) => {
+        const position = (index / classCount) * (sorted.length - 1);
+        const lower = Math.floor(position);
+        const upper = Math.ceil(position);
+        return sorted[lower] + (sorted[upper] - sorted[lower]) * (position - lower);
+      });
+    }
+    if (scaleMode === "log" && maxValue > 0) {
+      const positives = visibleValues.filter((value) => value > 0);
+      const logMin = Math.log(Math.min(...positives));
+      const logMax = Math.log(maxValue);
+      return Array.from({ length: classCount + 1 }, (_, index) => Math.exp(logMin + ((logMax - logMin) * index) / classCount));
+    }
+    return Array.from({ length: classCount + 1 }, (_, index) => minValue + ((maxValue - minValue) * index) / classCount);
+  }, [classCount, hasData, maxValue, minValue, scaleMode, visibleValues]);
+  const selectedRegion = visibleRegions.find((feature) => feature.properties.id === selectedRegionId) ?? null;
+  const completedCount = visibleRegions.filter((feature) => Number.isFinite(values[feature.properties.id])).length;
+  const completionPercent = visibleRegions.length === 0 ? 0 : Math.round((completedCount / visibleRegions.length) * 100);
   const collection = useMemo<FeatureCollection<Geometry, RegionProperties>>(
     () => ({ type: "FeatureCollection", features: visibleRegions }),
     [visibleRegions],
   );
   const projection = useMemo(
-    () => geoMercator().fitExtent([[78, 132], [1122, 745]], collection),
-    [collection],
+    () => geoMercator().fitExtent([[78, showLegend && legendPosition === "top" ? 174 : 132], [1122, 745]], collection),
+    [collection, legendPosition, showLegend],
   );
   const path = useMemo(() => geoPath(projection), [projection]);
 
@@ -249,10 +388,11 @@ function App() {
     language === "fa" ? feature.properties.nameFa : feature.properties.nameEn;
 
   const colorFor = (value: number | undefined): string => {
-    if (!Number.isFinite(value)) return "#edf0f5";
-    if (maxValue === minValue) return palette.colors[palette.colors.length - 1];
-    const ratio = ((value ?? minValue) - minValue) / (maxValue - minValue);
-    return palette.colors[Math.min(palette.colors.length - 1, Math.floor(ratio * palette.colors.length))];
+    if (!Number.isFinite(value)) return noDataColor;
+    if (maxValue === minValue) return scaleColors[scaleColors.length - 1];
+    if (scaleMode === "log" && (value ?? 0) <= 0) return scaleColors[0];
+    const index = scaleBreaks.findIndex((boundary, boundaryIndex) => boundaryIndex > 0 && (value ?? minValue) <= boundary);
+    return scaleColors[index < 0 ? scaleColors.length - 1 : Math.max(0, index - 1)];
   };
 
   const resetSample = () => {
@@ -261,6 +401,8 @@ function App() {
     setTitle(t.mapTitle);
     setSubtitle(t.mapSubtitle);
     setStatus("");
+    setImportSummary(null);
+    setSelectedRegionId(null);
   };
 
   const openProvince = (feature: RegionFeature) => {
@@ -270,6 +412,7 @@ function App() {
     setTitle(language === "fa" ? `نقشهٔ شهرستان‌های ${feature.properties.nameFa}` : `${feature.properties.nameEn} counties`);
     setSubtitle("");
     setTooltip(null);
+    setSelectedRegionId(null);
   };
 
   const setRegionValue = (id: string, raw: string) => {
@@ -286,23 +429,57 @@ function App() {
   };
 
   const applyRows = (rows: Array<[string, unknown]>) => {
-    const lookup = new Map<string, string>();
+    const lookup = new Map<string, RegionFeature>();
     for (const feature of visibleRegions) {
-      lookup.set(normalizeName(feature.properties.nameFa), feature.properties.id);
-      lookup.set(normalizeName(feature.properties.nameEn), feature.properties.id);
+      lookup.set(normalizeName(feature.properties.nameFa), feature);
+      lookup.set(normalizeName(feature.properties.nameEn), feature);
     }
     let matched = 0;
+    let validRows = 0;
+    const issues: ImportIssue[] = [];
     const next = { ...values };
     for (const [name, rawValue] of rows) {
-      const id = lookup.get(normalizeName(String(name ?? "")));
+      const rawName = String(name ?? "");
+      const normalized = normalizeName(rawName);
       const numeric = Number(String(rawValue ?? "").replace(/,/g, ""));
-      if (id && Number.isFinite(numeric)) {
-        next[id] = numeric;
+      if (!rawName.trim() || !Number.isFinite(numeric)) continue;
+      validRows += 1;
+      const exact = lookup.get(normalized);
+      if (exact) {
+        next[exact.properties.id] = numeric;
         matched += 1;
+        continue;
       }
+      const candidates = visibleRegions
+        .map((feature) => ({
+          feature,
+          score: Math.max(
+            similarity(normalized, normalizeName(feature.properties.nameFa)),
+            similarity(normalized, normalizeName(feature.properties.nameEn)),
+          ),
+        }))
+        .sort((a, b) => b.score - a.score);
+      const suggestion = candidates[0];
+      issues.push({
+        name: rawName,
+        value: numeric,
+        suggestionId: suggestion?.score >= 0.58 ? suggestion.feature.properties.id : undefined,
+        suggestionName: suggestion?.score >= 0.58 ? regionName(suggestion.feature) : undefined,
+      });
     }
     setValues(next);
+    setImportSummary({ matched, total: validRows, issues });
     setStatus(`${matched} ${t.matched}`);
+  };
+
+  const acceptSuggestion = (issue: ImportIssue) => {
+    if (!issue.suggestionId) return;
+    setValues((current) => ({ ...current, [issue.suggestionId!]: issue.value }));
+    setImportSummary((current) => current ? {
+      ...current,
+      matched: current.matched + 1,
+      issues: current.issues.filter((item) => item !== issue),
+    } : current);
   };
 
   const readDataFile = async (file: File) => {
@@ -441,9 +618,6 @@ function App() {
     );
   }, []);
 
-  const legendValues = palette.colors.map((_, index) =>
-    minValue + ((maxValue - minValue) * index) / Math.max(1, palette.colors.length - 1),
-  );
   const titleY = Math.max(54, titleFontSize + 10);
   const subtitleY = titleY + subtitleFontSize + 10;
 
@@ -457,52 +631,78 @@ function App() {
 
       <main className="workspace">
         <aside className="control-panel" aria-label={t.data}>
-          <section className="panel-section">
-            <div className="section-heading"><span className="section-icon"><MapPinned size={17} aria-hidden="true" /></span><h2>{language === "fa" ? "سطح نقشه" : "Map level"}</h2></div>
-            <div className="segmented" role="tablist" aria-label={language === "fa" ? "سطح نقشه" : "Map level"}>
-              <button className={level === "province" ? "is-active" : ""} onClick={() => setLevel("province")}>{t.provinces}</button>
-              <button className={level === "county" ? "is-active" : ""} onClick={() => setLevel("county")}>{t.counties}</button>
-            </div>
-            {level === "county" && (
-              <label className="field-label">{t.selectProvince}
-                <select value={selectedProvince} onChange={(event) => setSelectedProvince(event.target.value)}>
-                  {provinces.map((province) => <option key={province.properties.id} value={province.properties.nameFa}>{language === "fa" ? province.properties.nameFa : province.properties.nameEn}</option>)}
-                </select>
-              </label>
-            )}
-          </section>
+          <nav className="workflow-steps" aria-label={language === "fa" ? "مراحل ساخت نقشه" : "Map workflow"}>
+            {([
+              ["data", t.stepData],
+              ["style", t.stepStyle],
+              ["export", t.stepExport],
+            ] as Array<[WorkflowStep, string]>).map(([step, label], index) => (
+              <button key={step} className={activeStep === step ? "is-active" : ""} aria-current={activeStep === step ? "step" : undefined} onClick={() => setActiveStep(step)}>
+                <span>{index + 1}</span>{label}
+              </button>
+            ))}
+          </nav>
 
-          <section className="panel-section data-section">
-            <div className="section-heading"><span className="section-icon"><PencilLine size={17} aria-hidden="true" /></span><h2>{t.data}</h2></div>
-            <div className="segmented" role="tablist">
-              <button className={dataMode === "manual" ? "is-active" : ""} onClick={() => setDataMode("manual")}><PencilLine size={15} aria-hidden="true" />{t.manual}</button>
-              <button className={dataMode === "file" ? "is-active" : ""} onClick={() => setDataMode("file")}><FileSpreadsheet size={15} aria-hidden="true" />{t.file}</button>
-            </div>
-            {dataMode === "manual" ? (
-              <div className="data-table-wrap">
-                <table className="data-table">
-                  <thead><tr><th>{t.region}</th><th>{t.value}</th></tr></thead>
-                  <tbody>{visibleRegions.map((feature) => (
-                    <tr key={feature.properties.id}>
-                      <td>{regionName(feature)}</td>
-                      <td><input inputMode="decimal" aria-label={`${t.value} ${regionName(feature)}`} value={values[feature.properties.id] ?? ""} onChange={(event) => setRegionValue(feature.properties.id, event.target.value)} /></td>
-                    </tr>
-                  ))}</tbody>
-                </table>
+          {activeStep === "data" && <>
+            <section className="panel-section">
+              <div className="section-heading"><span className="section-icon"><MapPinned size={17} aria-hidden="true" /></span><h2>{language === "fa" ? "سطح نقشه" : "Map level"}</h2></div>
+              <div className="segmented" role="tablist" aria-label={language === "fa" ? "سطح نقشه" : "Map level"}>
+                <button className={level === "province" ? "is-active" : ""} onClick={() => { setLevel("province"); setSelectedRegionId(null); }}>{t.provinces}</button>
+                <button className={level === "county" ? "is-active" : ""} onClick={() => { setLevel("county"); setSelectedRegionId(null); }}>{t.counties}</button>
               </div>
-            ) : (
-              <div className="upload-zone">
-                <Upload aria-hidden="true" />
-                <strong>{t.upload}</strong>
-                <span>{t.uploadHint}</span>
-                <label className="file-btn"><input type="file" accept=".xlsx,.xls,.csv,.json,application/json" onChange={(event) => event.target.files?.[0] && void readDataFile(event.target.files[0])} /><FileSpreadsheet size={16} aria-hidden="true" />{t.upload}</label>
-                <div className="format-row"><span><FileSpreadsheet size={14} aria-hidden="true" />XLSX</span><span><Braces size={14} aria-hidden="true" />JSON</span></div>
+              {level === "county" && (
+                <label className="field-label">{t.selectProvince}
+                  <select value={selectedProvince} onChange={(event) => { setSelectedProvince(event.target.value); setSelectedRegionId(null); }}>
+                    {provinces.map((province) => <option key={province.properties.id} value={province.properties.nameFa}>{language === "fa" ? province.properties.nameFa : province.properties.nameEn}</option>)}
+                  </select>
+                </label>
+              )}
+              <div className="completion" aria-label={`${t.complete}: ${completionPercent}%`}>
+                <div><span>{t.complete}</span><strong>{completedCount}/{visibleRegions.length}</strong></div>
+                <span><i style={{ width: `${completionPercent}%` }} /></span>
               </div>
-            )}
-            {status && <p className="status" role="status">{status}</p>}
-          </section>
+            </section>
 
-          <section className="panel-section">
+            <section className="panel-section data-section">
+              <div className="section-heading"><span className="section-icon"><PencilLine size={17} aria-hidden="true" /></span><h2>{t.data}</h2></div>
+              <p className="interaction-hint"><MousePointer2 size={16} aria-hidden="true" />{t.editOnMap}</p>
+              <div className="segmented" role="tablist">
+                <button className={dataMode === "manual" ? "is-active" : ""} onClick={() => setDataMode("manual")}><PencilLine size={15} aria-hidden="true" />{t.manual}</button>
+                <button className={dataMode === "file" ? "is-active" : ""} onClick={() => setDataMode("file")}><FileSpreadsheet size={15} aria-hidden="true" />{t.file}</button>
+              </div>
+              {dataMode === "manual" ? (
+                <div className="data-table-wrap">
+                  <table className="data-table">
+                    <thead><tr><th>{t.region}</th><th>{t.value}</th></tr></thead>
+                    <tbody>{visibleRegions.map((feature) => (
+                      <tr key={feature.properties.id} className={selectedRegionId === feature.properties.id ? "is-selected" : ""}>
+                        <td><button className="region-row-button" onClick={() => setSelectedRegionId(feature.properties.id)}>{regionName(feature)}</button></td>
+                        <td><input inputMode="decimal" aria-label={`${t.value} ${regionName(feature)}`} value={values[feature.properties.id] ?? ""} onChange={(event) => setRegionValue(feature.properties.id, event.target.value)} /></td>
+                      </tr>
+                    ))}</tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="upload-zone">
+                  <Upload aria-hidden="true" />
+                  <strong>{t.upload}</strong>
+                  <span>{t.uploadHint}</span>
+                  <label className="file-btn"><input type="file" accept=".xlsx,.xls,.csv,.json,application/json" onChange={(event) => event.target.files?.[0] && void readDataFile(event.target.files[0])} /><FileSpreadsheet size={16} aria-hidden="true" />{t.upload}</label>
+                  <div className="format-row"><span><FileSpreadsheet size={14} aria-hidden="true" />XLSX</span><span><Braces size={14} aria-hidden="true" />JSON</span></div>
+                </div>
+              )}
+              {status && <p className="status" role="status">{status}</p>}
+              {importSummary && <div className="match-report">
+                <div className="match-summary"><Check size={16} aria-hidden="true" /><strong>{t.matchingReport}</strong><span>{importSummary.matched}/{importSummary.total}</span></div>
+                {importSummary.issues.length > 0 && <div className="match-issues"><p><AlertCircle size={15} aria-hidden="true" />{t.needsReview}</p>{importSummary.issues.map((issue) => (
+                  <div className="match-issue" key={`${issue.name}-${issue.value}`}><span><strong>{issue.name}</strong>{issue.suggestionName && <small>← {issue.suggestionName}</small>}</span>{issue.suggestionId && <button onClick={() => acceptSuggestion(issue)}>{t.useSuggestion}</button>}</div>
+                ))}</div>}
+              </div>}
+              <button className="next-step" onClick={() => setActiveStep("style")}>{t.next}{direction === "rtl" ? <ChevronLeft size={17} aria-hidden="true" /> : <ChevronRight size={17} aria-hidden="true" />}</button>
+            </section>
+          </>}
+
+          {activeStep === "style" && <section className="panel-section">
             <div className="section-heading"><span className="section-icon"><Type size={17} aria-hidden="true" /></span><h2>{t.style}</h2></div>
             <div className="field-label"><span>{t.palette}</span>
               <div className="palette-list">{PALETTES.map((item) => (
@@ -518,41 +718,52 @@ function App() {
                 <span><PaletteIcon size={15} aria-hidden="true" />{t.customPalette}</span>
               </button>
               <div className="color-inputs">{customColors.map((color, index) => (
-                <input key={index} type="color" value={color} aria-label={`${t.customPalette} ${index + 1}`} onChange={(event) => {
-                  const next = [...customColors];
-                  next[index] = event.target.value;
-                  setCustomColors(next);
-                  setPaletteId("custom");
-                }} />
+                <input key={index} type="color" value={color} aria-label={`${t.customPalette} ${index + 1}`} onChange={(event) => { const next = [...customColors]; next[index] = event.target.value; setCustomColors(next); setPaletteId("custom"); }} />
               ))}</div>
             </div>
+            <div className="legend-settings">
+              <label className="field-label">{t.scaleMethod}<select value={scaleMode} onChange={(event) => setScaleMode(event.target.value as ScaleMode)}><option value="linear">{t.linear}</option><option value="quantile">{t.quantile}</option><option value="log">{t.logarithmic}</option></select></label>
+              <label className="field-label">{t.classes}<select value={classCount} onChange={(event) => setClassCount(Number(event.target.value))}>{[3, 4, 5, 6, 7].map((count) => <option key={count} value={count}>{count}</option>)}</select></label>
+              <label className="field-label">{t.legendPosition}<select value={legendPosition} onChange={(event) => setLegendPosition(event.target.value as LegendPosition)}><option value="top">{t.top}</option><option value="bottom">{t.bottom}</option></select></label>
+              <label className="field-label color-field">{t.noDataColor}<input type="color" value={noDataColor} onChange={(event) => setNoDataColor(event.target.value)} /></label>
+            </div>
+            <div className="toggle-row"><span>{t.showLegend}</span><button className="icon-text-btn" onClick={() => setShowLegend((current) => !current)}>{showLegend ? <Eye size={16} aria-hidden="true" /> : <EyeOff size={16} aria-hidden="true" />}{showLegend ? t.show : t.hide}</button></div>
             <div className="toggle-row"><span>{t.labels}</span><button className="icon-text-btn" onClick={() => setShowLabels((current) => !current)}>{showLabels ? <Eye size={16} aria-hidden="true" /> : <EyeOff size={16} aria-hidden="true" />}{showLabels ? t.show : t.hide}</button></div>
             <label className="field-label">{t.title}<input value={title} onChange={(event) => setTitle(event.target.value)} /></label>
             <label className="field-label">{t.subtitle}<input value={subtitle} onChange={(event) => setSubtitle(event.target.value)} /></label>
             <div className="type-scale-grid">
-              {[
-                { label: t.titleSize, value: titleFontSize, set: setTitleFontSize, min: 18, max: 64 },
-                { label: t.subtitleSize, value: subtitleFontSize, set: setSubtitleFontSize, min: 10, max: 36 },
-                { label: t.provinceSize, value: provinceFontSize, set: setProvinceFontSize, min: 7, max: 28 },
-                { label: t.countySize, value: countyFontSize, set: setCountyFontSize, min: 6, max: 22 },
-              ].map((item) => (
-                <label className="range-field" key={item.label}>
-                  <span>{item.label} <output>{item.value} px</output></span>
-                  <input type="range" min={item.min} max={item.max} value={item.value} onChange={(event) => item.set(Number(event.target.value))} />
-                </label>
+              {[{ label: t.titleSize, value: titleFontSize, set: setTitleFontSize, min: 18, max: 64 }, { label: t.subtitleSize, value: subtitleFontSize, set: setSubtitleFontSize, min: 10, max: 36 }, { label: t.provinceSize, value: provinceFontSize, set: setProvinceFontSize, min: 7, max: 28 }, { label: t.countySize, value: countyFontSize, set: setCountyFontSize, min: 6, max: 22 }].map((item) => (
+                <label className="range-field" key={item.label}><span>{item.label} <output>{item.value} px</output></span><input type="range" min={item.min} max={item.max} value={item.value} onChange={(event) => item.set(Number(event.target.value))} /></label>
               ))}
             </div>
             <label className="font-upload"><input type="file" accept=".ttf,.otf,.woff,.woff2,font/ttf,font/otf,font/woff,font/woff2" onChange={(event) => event.target.files?.[0] && void loadFont(event.target.files[0])} /><Type size={16} aria-hidden="true" /><span><strong>{t.font}</strong><small>{t.fontHint}</small></span></label>
-          </section>
+            <button className="next-step" onClick={() => setActiveStep("export")}>{t.next}{direction === "rtl" ? <ChevronLeft size={17} aria-hidden="true" /> : <ChevronRight size={17} aria-hidden="true" />}</button>
+          </section>}
+
+          {activeStep === "export" && <section className="panel-section export-step">
+            <div className="section-heading"><span className="section-icon"><ImageDown size={17} aria-hidden="true" /></span><h2>{t.export}</h2></div>
+            <div className="export-readiness"><Check size={18} aria-hidden="true" /><div><strong>{t.exportReady}</strong><span>{t.exportCheck}</span></div></div>
+            <div className="export-dimensions"><span>{t.quality}</span><strong>{WIDTH * quality} × {HEIGHT * quality} px</strong></div>
+            <div className="quality-picker" aria-label={t.quality}>{[1, 2, 4].map((item) => <button key={item} className={quality === item ? "is-active" : ""} onClick={() => setQuality(item)}>{item}×</button>)}</div>
+            <button className="download-primary" onClick={() => void downloadMap("png")}><Download size={16} aria-hidden="true" />{t.png}</button>
+            <button className="download-secondary" onClick={() => void downloadMap("jpeg")}><Download size={16} aria-hidden="true" />{t.jpg}</button>
+          </section>}
         </aside>
 
         <section className="preview-column">
-          <div className="preview-toolbar">
-            <div>
-              {level === "county" && <button className="back-btn" onClick={() => setLevel("province")}><ArrowRight size={16} aria-hidden="true" />{t.back}</button>}
-              <span className="view-label">{level === "province" ? t.provinces : `${t.counties} · ${language === "fa" ? selectedProvince : provinces.find((item) => item.properties.nameFa === selectedProvince)?.properties.nameEn}`}</span>
+          <div className="preview-meta">
+            <div className="preview-toolbar">
+              <div>
+                {level === "county" && <button className="back-btn" onClick={() => { setLevel("province"); setSelectedRegionId(null); }}><ArrowRight size={16} aria-hidden="true" />{t.back}</button>}
+                <span className="view-label">{level === "province" ? t.provinces : `${t.counties} · ${language === "fa" ? selectedProvince : provinces.find((item) => item.properties.nameFa === selectedProvince)?.properties.nameEn}`}</span>
+              </div>
+              <button className="reset-btn" onClick={resetSample}><RotateCcw size={15} aria-hidden="true" />{t.reset}</button>
             </div>
-            <button className="reset-btn" onClick={resetSample}><RotateCcw size={15} aria-hidden="true" />{t.reset}</button>
+            {selectedRegion && <div className="selection-editor" role="group" aria-label={t.editValue}>
+              <span><MousePointer2 size={16} aria-hidden="true" /><small>{t.editValue}</small><strong>{regionName(selectedRegion)}</strong></span>
+              <label><span>{t.value}</span><input autoFocus inputMode="decimal" value={values[selectedRegion.properties.id] ?? ""} onChange={(event) => setRegionValue(selectedRegion.properties.id, event.target.value)} /></label>
+              {level === "province" && <button onClick={() => openProvince(selectedRegion)}>{t.openCounties}{direction === "rtl" ? <ChevronLeft size={16} aria-hidden="true" /> : <ChevronRight size={16} aria-hidden="true" />}</button>}
+            </div>}
           </div>
 
           <figure className="map-frame">
@@ -571,13 +782,14 @@ function App() {
                       <path
                         d={path(feature) ?? ""}
                         fill={colorFor(value)}
-                        stroke="#f7f8fb"
-                        strokeWidth={level === "province" ? 2.2 : 1.5}
+                        stroke={selectedRegionId === feature.properties.id ? "#2849be" : "#f7f8fb"}
+                        strokeWidth={selectedRegionId === feature.properties.id ? 4 : level === "province" ? 2.2 : 1.5}
                         tabIndex={0}
                         role="button"
+                        aria-pressed={selectedRegionId === feature.properties.id}
                         aria-label={`${name}${Number.isFinite(value) ? `: ${value}` : ""}`}
-                        onClick={() => openProvince(feature)}
-                        onKeyDown={(event) => event.key === "Enter" && openProvince(feature)}
+                        onClick={() => setSelectedRegionId(feature.properties.id)}
+                        onKeyDown={(event) => event.key === "Enter" && setSelectedRegionId(feature.properties.id)}
                         onMouseMove={(event) => setTooltip({ x: event.clientX, y: event.clientY, name, value })}
                         onMouseLeave={() => setTooltip(null)}
                         onFocus={(event) => {
@@ -594,7 +806,7 @@ function App() {
                 })}
               </g>
               {!hasData && <g><rect x="330" y="375" width="540" height="105" rx="10" fill="#ffffff" stroke="#d7dde7" /><text x="600" y="418" textAnchor="middle" className="empty-title" fill="#344054">{t.emptyTitle}</text><text x="600" y="451" textAnchor="middle" className="empty-hint" fill="#667085">{t.emptyHint}</text></g>}
-              {hasData && <g transform="translate(270 818)">{palette.colors.map((color, index) => <rect key={color} x={index * 132} width="132" height="18" fill={color} />)}{legendValues.map((value, index) => <text key={index} x={index * 132} y="43" textAnchor={index === 0 ? "start" : index === legendValues.length - 1 ? "end" : "middle"} className="legend-label" fill="#667085">{new Intl.NumberFormat(language === "fa" ? "fa-IR" : "en-US", { maximumFractionDigits: 1 }).format(value)}</text>)}</g>}
+              {hasData && showLegend && <g transform={`translate(270 ${legendPosition === "top" ? 112 : 818})`}>{scaleColors.map((color, index) => <rect key={`${color}-${index}`} x={index * (660 / classCount)} width={660 / classCount} height="18" fill={color} />)}{scaleBreaks.map((value, index) => <text key={`${value}-${index}`} x={index * (660 / classCount)} y="43" textAnchor={index === 0 ? "start" : index === scaleBreaks.length - 1 ? "end" : "middle"} className="legend-label" fill="#667085">{new Intl.NumberFormat(language === "fa" ? "fa-IR" : "en-US", { maximumFractionDigits: 1 }).format(value)}</text>)}</g>}
               <text x="40" y="874" className="source-label" fill="#798394">{t.source}</text>
             </svg>
             <figcaption>{t.source}</figcaption>
