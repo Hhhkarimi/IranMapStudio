@@ -135,6 +135,7 @@ const copy = {
     quality: "کیفیت",
     png: "PNG شفاف",
     jpg: "دریافت JPG",
+    svg: "دریافت SVG",
     reset: "بازنشانی نمونه",
     back: "بازگشت به ایران",
     mapTitle: "تعداد شهرستان‌ها به تفکیک استان",
@@ -204,6 +205,7 @@ const copy = {
     quality: "Quality",
     png: "Transparent PNG",
     jpg: "Download JPG",
+    svg: "Download SVG",
     reset: "Reset sample",
     back: "Back to Iran",
     mapTitle: "County count by province",
@@ -526,14 +528,13 @@ function App() {
     setFontDataUrl(dataUrl);
   };
 
-  const downloadMap = async (format: "png" | "jpeg") => {
-    if (!svgRef.current) return;
-    try {
-      const { Canvg } = await import("canvg");
+  const buildExportSvg = (transparent: boolean, outputScale = 1): SVGSVGElement | null => {
+    if (!svgRef.current) return null;
     const clone = svgRef.current.cloneNode(true) as SVGSVGElement;
-    clone.setAttribute("width", String(WIDTH * quality));
-    clone.setAttribute("height", String(HEIGHT * quality));
-    if (format === "png") clone.querySelector(".export-background")?.remove();
+    clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    clone.setAttribute("width", String(WIDTH * outputScale));
+    clone.setAttribute("height", String(HEIGHT * outputScale));
+    if (transparent) clone.querySelector(".export-background")?.remove();
     const safeFontName = fontName.replace(/["']/g, "");
     const style = document.createElementNS("http://www.w3.org/2000/svg", "style");
     style.textContent = `${fontDataUrl ? `@font-face{font-family:"${safeFontName}";src:url(${fontDataUrl})}` : ""}
@@ -543,32 +544,62 @@ function App() {
       .county-label{font-size:${countyFontSize}px}.legend-label{font-size:12px;font-variant-numeric:tabular-nums}
       .source-label{font-size:10px}.empty-title{font-size:18px;font-weight:750}.empty-hint{font-size:13px}`;
     clone.prepend(style);
-    const canvas = document.createElement("canvas");
-    canvas.width = WIDTH * quality;
-    canvas.height = HEIGHT * quality;
-    const context = canvas.getContext("2d");
-    if (!context) return;
-    const renderer = Canvg.fromString(context, new XMLSerializer().serializeToString(clone), {
-      ignoreAnimation: true,
-      ignoreMouse: true,
-    });
-    await renderer.render();
+    return clone;
+  };
+
+  const downloadMap = async (format: "png" | "jpeg") => {
+    try {
+      const clone = buildExportSvg(format === "png", quality);
+      if (!clone) return;
+      const { Canvg } = await import("canvg");
+      const canvas = document.createElement("canvas");
+      canvas.width = WIDTH * quality;
+      canvas.height = HEIGHT * quality;
+      const context = canvas.getContext("2d");
+      if (!context) return;
+      const renderer = Canvg.fromString(context, new XMLSerializer().serializeToString(clone), {
+        ignoreAnimation: true,
+        ignoreMouse: true,
+      });
+      await renderer.render();
       canvas.toBlob((output) => {
-      if (!output) return;
-      const downloadUrl = URL.createObjectURL(output);
-      const link = document.createElement("a");
-      link.download = `iran-map-${level}-${quality}x.${format === "jpeg" ? "jpg" : "png"}`;
-      link.href = downloadUrl;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
+        if (!output) return;
+        const downloadUrl = URL.createObjectURL(output);
+        const link = document.createElement("a");
+        link.download = `iran-map-${level}-${quality}x.${format === "jpeg" ? "jpg" : "png"}`;
+        link.href = downloadUrl;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
         setStatus(language === "fa" ? "دانلود تصویر آغاز شد." : "Image download started.");
-      window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1_000);
+        window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1_000);
       }, `image/${format}`, 0.94);
     } catch (error) {
       const message = error instanceof Error ? error.message : JSON.stringify(error);
       console.error(`Export failed: ${message}`);
       setStatus(language === "fa" ? `خروجی ساخته نشد: ${message}` : `Export failed: ${message}`);
+    }
+  };
+
+  const downloadSvg = () => {
+    try {
+      const clone = buildExportSvg(true);
+      if (!clone) return;
+      const serialized = `<?xml version="1.0" encoding="UTF-8"?>\n${new XMLSerializer().serializeToString(clone)}`;
+      const output = new Blob([serialized], { type: "image/svg+xml;charset=utf-8" });
+      const downloadUrl = URL.createObjectURL(output);
+      const link = document.createElement("a");
+      link.download = `iran-map-${level}.svg`;
+      link.href = downloadUrl;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setStatus(language === "fa" ? "دانلود SVG آغاز شد." : "SVG download started.");
+      window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1_000);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : JSON.stringify(error);
+      console.error(`SVG export failed: ${message}`);
+      setStatus(language === "fa" ? `خروجی SVG ساخته نشد: ${message}` : `SVG export failed: ${message}`);
     }
   };
 
@@ -638,7 +669,7 @@ function App() {
               ["export", t.stepExport],
             ] as Array<[WorkflowStep, string]>).map(([step, label], index) => (
               <button key={step} className={activeStep === step ? "is-active" : ""} aria-current={activeStep === step ? "step" : undefined} onClick={() => setActiveStep(step)}>
-                <span>{index + 1}</span>{label}
+                <span>{new Intl.NumberFormat(language === "fa" ? "fa-IR" : "en-US", { useGrouping: false }).format(index + 1)}</span>{label}
               </button>
             ))}
           </nav>
@@ -747,6 +778,7 @@ function App() {
             <div className="quality-picker" aria-label={t.quality}>{[1, 2, 4].map((item) => <button key={item} className={quality === item ? "is-active" : ""} onClick={() => setQuality(item)}>{item}×</button>)}</div>
             <button className="download-primary" onClick={() => void downloadMap("png")}><Download size={16} aria-hidden="true" />{t.png}</button>
             <button className="download-secondary" onClick={() => void downloadMap("jpeg")}><Download size={16} aria-hidden="true" />{t.jpg}</button>
+            <button className="download-secondary" onClick={downloadSvg}><Download size={16} aria-hidden="true" />{t.svg}</button>
           </section>}
         </aside>
 
@@ -815,7 +847,7 @@ function App() {
           <section className="export-bar">
             <div className="export-heading"><ImageDown size={18} aria-hidden="true" /><div><strong>{t.export}</strong><span>{WIDTH * quality} × {HEIGHT * quality} px</span></div></div>
             <div className="quality-picker" aria-label={t.quality}>{[1, 2, 4].map((item) => <button key={item} className={quality === item ? "is-active" : ""} onClick={() => setQuality(item)}>{item}×</button>)}</div>
-            <div className="download-actions"><button className="download-primary" onClick={() => void downloadMap("png")}><Download size={16} aria-hidden="true" />{t.png}</button><button className="download-secondary" onClick={() => void downloadMap("jpeg")}><Download size={16} aria-hidden="true" />{t.jpg}</button></div>
+            <div className="download-actions"><button className="download-primary" onClick={() => void downloadMap("png")}><Download size={16} aria-hidden="true" />{t.png}</button><button className="download-secondary" onClick={() => void downloadMap("jpeg")}><Download size={16} aria-hidden="true" />{t.jpg}</button><button className="download-secondary" onClick={downloadSvg}><Download size={16} aria-hidden="true" />{t.svg}</button></div>
           </section>
         </section>
       </main>

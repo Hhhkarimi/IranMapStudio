@@ -4,13 +4,13 @@
 
 ## قابلیت‌ها
 
-- نمایش ۳۱ استان و ۴۹۳ مرز شهرستانی موجود در دادهٔ منبع
+- نمایش ۳۱ استان و ۴۶۹ شهرستان یکتا با حفظ قطعات جزیره‌ای و جداافتاده
 - ورود داده به‌صورت دستی، Excel، CSV یا JSON
 - رابط فارسی و انگلیسی با پشتیبانی RTL/LTR
 - شانزده پالت رنگی آماده، پالت پنج‌رنگ سفارشی و نمایش/پنهان‌کردن برچسب مناطق
 - تنظیم مستقل اندازهٔ عنوان، زیرعنوان، نام استان‌ها و نام شهرستان‌ها
 - فونت Vazirmatn داخلی و امکان بارگذاری TTF، OTF، WOFF یا WOFF2
-- خروجی PNG با پس‌زمینهٔ شفاف و JPG در کیفیت‌های 1×، 2× و 4×
+- خروجی SVG و PNG با پس‌زمینهٔ شفاف، به‌همراه JPG در کیفیت‌های 1×، 2× و 4×
 - پردازش کامل روی دستگاه کاربر؛ فایل‌های داده به هیچ سروری فرستاده نمی‌شوند
 
 ## قالب داده
@@ -58,4 +58,4 @@ npm run build
 
 ---
 
-Free, client-side bilingual choropleth-map editor for Iran. Import Excel/CSV/JSON or enter values manually, drill down from provinces to counties, customize colours and fonts, and export PNG/JPG images at multiple resolutions.
+Free, client-side bilingual choropleth-map editor for Iran. Import Excel/CSV/JSON or enter values manually, drill down from provinces to counties, customize colours and fonts, and export transparent SVG/PNG or JPG images.
